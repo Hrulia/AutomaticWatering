@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AutoOppressionByHumidity", "AutoOppressionByHumidity.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TM1637TinyDisplay", "..\libraries\TM1637TinyDisplay\TM1637TinyDisplay.vcxitems", "{22B725E0-4BA7-4EA6-B043-D6055CB99326}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EncButton-main", "..\libraries\EncButton-main\EncButton-main.vcxitems", "{67C6FE27-3347-43F8-A940-42ABE7D0E72C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EEPROM", "C:\Users\Sergey\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.5\libraries\EEPROM\EEPROM.vcxitems", "{A5C7F74D-8636-4295-9417-F1E3AFC3A2F3}"
+EndProject
+Project("{F088123C-0E9E-452A-89E6-6BA2F21D5CAC}") = "ModelingProject1", "..\ModelingProject1\ModelingProject1.modelproj", "{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.ActiveCfg = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|Any CPU.ActiveCfg = Release|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Debug|x86.Build.0 = Debug|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Release|x86.ActiveCfg = Release|Any CPU
+		{C2F94DAA-B941-40FF-8D3A-F3E195224B0E}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
