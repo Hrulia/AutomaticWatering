@@ -3,11 +3,17 @@
     Created:	01.05.2021 10:38:51
     Author:     AUTO33826TPLINK\Sergey
 */
+/*
+Солнечный день - освещенность 67, но пока на датчик не попадает солнце
+150 - уже вечер и можно поливать начинать.
+
+
+*/
 
 
 #include <EEPROM.h>
 
-#define EB_FAST 0         // таймаут быстрого поворота энкодера (переопределение в программе)
+#define EB_FAST 30         // таймаут быстрого поворота энкодера (Задефайнен в EncButton.h, можно переопределить тут в программе)
 #include <EncButton.h>
 #include "MotoValve.h"
 #include <TM1637TinyDisplay.h>
@@ -17,7 +23,7 @@
 #define TM1637_CLK_PIN 3
 #define TM1637_DIO_PIN 4
 
-//Input capacitive sensor. GPIO пин с поддержкой АЦП
+//Input capacitive sensor humidity. GPIO пин с поддержкой АЦП
 #define SENSOR_HUMIDITY_PIN A0  /*constexpr auto*/ 
 
 //Input light sensor
@@ -38,52 +44,52 @@
 //#define VALVE_CLOSE_PIN 12
 
 
-
-//параметры системы
+//Необходимые структуры:
+//Структура для хранения текущих параметров системы
 struct srcSettings {
-	int thresholdLight; //минимальная освещенность разрешающая полив
-	int thresholdHumidity; //минимальная влажность для начала полива 
-	int displayBrightness; //Текущая яркость дисплея
+	int thresholdLight;							//минимальная освещенность разрешающая полив
+	int thresholdHumidity;					//минимальная влажность для начала полива 
+	int displayBrightness;					//Текущая яркость дисплея
 	unsigned long durationWatering; //длительность полива(открытого крана) в минутах
-};
+	};
 
-	enum work_mode {
-    NORMAL_WORK,   // 0
-    SETTING,       // 1
-    };
+//Перечисление возможных режимов работы системы
+enum work_mode {
+  NORMAL_WORK,   // 0
+  SETTING,       // 1
+  };
 
-//переменная содержит настройки системы
-srcSettings parametrs; 
 
-//Текущие значения освещенности и влажности
-int currentLight;
-int currentHumidity;
-bool flagWateringDone = false; //сигнализирует об выполненном поливе сегодняшним вечером
+//Внутренние переменные и объекты
+	#define LIGHT_RESET 100									//При увеличении освещенности до этого значения Флаг выполненного полива сбросится
+	#define WAITING_TIME_AFTER_WATERING 7200000ul
+	#define ENCODER_HOLD_TIME 2700						//time-out для длительного нажатия кнопки энкодера
 
-work_mode CurrentWorkMode = NORMAL_WORK;  //текущий режим работы системы
-static int SettingsLevel=0;			//Текущий пункт в меню настройки 
-static int NormalWorkDisplayInfo = 0; //выводимая на дисплей информация в режиме NormalWork 
-
-	// Initialize TM1637TinyDisplay - 4 Digit Display
-	TM1637TinyDisplay displayTM1637(TM1637_CLK_PIN, TM1637_DIO_PIN);
-
-	// энкодер
-	// если аппаратной подтяжки к VCC нет - можно инициализировать ...enc(INPUT_PULLUP)
-	EncButton<EB_TICK, ENC_A_PIN, ENC_B_PIN, ENC_KEY_PIN> enc(INPUT_PULLUP);       //энкодер с кнопкой <A, B, KEY>
-
-	
-
+	int	currentLight=0;													//Текущая освещенность
+	int currentHumidity=0;											//Текущая влажность
+	///bool flagWateringDone = false;						//флаг выполненного полива сегодняшним вечером
+	unsigned long WateringDoneTime=0; //время, когда последний раз производился полив
+	work_mode CurrentWorkMode = NORMAL_WORK;  //текущий режим работы системы
+	srcSettings parametrs;										//В объекте храним граничные значения ключевых параметров системы
+	static int SettingsLevel=0;								//Текущий пункт в меню настройки 
+	static int NormalWorkDisplayInfo = 0;			//выводимая на дисплей информация в режиме NormalWork 
+		
+	TM1637TinyDisplay displayTM1637(TM1637_CLK_PIN, TM1637_DIO_PIN);					// Initialize TM1637TinyDisplay - 4 Digit Display
+	EncButton<EB_TICK, ENC_A_PIN, ENC_B_PIN, ENC_KEY_PIN> enc(INPUT_PULLUP);  //энкодер с кнопкой <A, B, KEY>
+	/*если аппаратной подтяжки к VCC нет - можно инициализировать ...enc(INPUT_PULLUP)*/
 
 void setup()
 {
 	Serial.begin(9600);
+	Serial.println("Start setup()");
 
 	//Загрузка начальных установок из EEPROM
-	EEPROM.get(10, parametrs);
+	EEPROM.get(10, parametrs); //считываем структуру с настройками начиная с адреса 10
+
 	/*яркость индикатора*/
-	(parametrs.displayBrightness > 7) ? 7 : parametrs.displayBrightness; //допустимый диапазон для яркости 0-7
-	
+	(parametrs.displayBrightness > 7) ? parametrs.displayBrightness=7 : parametrs.displayBrightness; //допустимый диапазон для яркости 0-7
 	displayTM1637.setBrightness(parametrs.displayBrightness);
+	//Тест сегментов индикатора. Так же показывает, что система перезагрузилась.
 	displayTM1637.showNumber(8888); delay(600); displayTM1637.clear();
 
 	//Ports setting
@@ -92,41 +98,43 @@ void setup()
 	pinMode(MIN_LIGHT_PIN, OUTPUT);
 	MotoValve.init();
 
-	enc.setHoldTimeout(3000); //time-out для длительного нажатия кнопки энкодера
+	enc.setHoldTimeout(ENCODER_HOLD_TIME); //time-out для длительного нажатия кнопки энкодера
 	/*enc.setEncType(1);*/
+	//Отправим команду на закрытие крана при перезагрузке(включении) системы
+	MotoValve.close();
 }
 
 
 void loop(){
-	//Serial.println();
+	//Serial.println("Start loop()");
 
-// тикер энкодера, вызывать как можно чаще или в прерывании
-// вернёт отличное от нуля значение, если произошло какое то событие с кнопкой/энкодером
+	// тикер энкодера, вызывать как можно чаще или в прерывании
 	enc.tick();
 	
 	//обслуживание внутренних процедур конроля за режимом работы крана
 	MotoValve.ValveWork();
 		
-		//Читаем значение освещенности
-		currentLight = getLight();
-		if (currentLight < 200) { //сбросим флаг уже проведенного в эти сутки полива (стало светло-наступило утро)
-			flagWateringDone = false; 
-			digitalWrite(MIN_LIGHT_PIN, LOW);
-		} 
+	//Читаем значение освещенности
+	currentLight = getLight(currentLight);
+	if (currentLight<LIGHT_RESET && (millis() > (WateringDoneTime + WAITING_TIME_AFTER_WATERING))){ //сбросим время последнего полива уже проведенного в эти сутки полива (стало светло-наступило утро)
+		WateringDoneTime = 0;
+		digitalWrite(MIN_LIGHT_PIN, LOW);
+	} 
 
-		//получение значения влажности почвы
-		currentHumidity = getHumidity();
+	//получение значения влажности почвы
+	currentHumidity = getHumidity(currentHumidity);
 		
 	//Проверка условий для полива
-	if ((currentHumidity >= parametrs.thresholdHumidity) && (currentLight >= parametrs.thresholdLight) && !flagWateringDone) {
+	if ((currentHumidity >= parametrs.thresholdHumidity) && (currentLight >= parametrs.thresholdLight) && WateringDoneTime==0) {
 		//Открываем кран
 		MotoValve.open(parametrs.durationWatering);
-		//устанавливаем флаг уже выполненного полива сегодня
-		flagWateringDone = true; 
+		//фиксируем время события начала полива
+		WateringDoneTime = millis();
 		//выведем информацию об установке флага выполнения полива на вывод MIN_LIGHT_PIN 
 		digitalWrite(MIN_LIGHT_PIN, HIGH);
 }
 
+	//Менюшка энкодера
 	switch (CurrentWorkMode)
 	{
 	case NORMAL_WORK:
@@ -201,7 +209,7 @@ void loop(){
 		}
 
 		// длительное нажатие - переход в режим настройки
-		if (enc.held()) {CurrentWorkMode = SETTING; Serial.println(String("enc.held ") + String(CurrentWorkMode)); }
+		if (enc.held()) {CurrentWorkMode = SETTING; Serial.println(String("enc.held. CurrentWorkMode=") + String(CurrentWorkMode)); }
 		
 		break;
 	case SETTING:
@@ -260,7 +268,7 @@ void loop(){
 				break;
 
 	case 2:
-			//*уровень меню - 2. Отображаем значение длительности полива
+			//*уровень меню - 2. Отображаем значение длительности полива, в минутах
 				displayTM1637.setBrightness(parametrs.displayBrightness);
 				displayTM1637.showString("DP");
 				displayTM1637.showNumber((long)parametrs.durationWatering);
@@ -288,9 +296,6 @@ void loop(){
 			displayTM1637.showString((String("DL ") + String(parametrs.displayBrightness)).c_str());
 
 			break;
-
-	
-
 		}
 
 		//переход к следующему пункту меню
@@ -308,10 +313,5 @@ void loop(){
 		}
 		break;
 	}
-
-
-
 	return;
 }
-
-
